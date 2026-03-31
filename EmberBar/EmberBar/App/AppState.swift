@@ -64,6 +64,7 @@ class AppState: ObservableObject {
     }
 
     func startPolling() {
+        NotificationManager.shared.requestPermission()
         refreshTimer?.invalidate()
         refreshTimer = Timer.scheduledTimer(
             withTimeInterval: settings.refreshIntervalSeconds,
@@ -107,10 +108,19 @@ class AppState: ObservableObject {
             isPeakHour = PeakHourDetector.isPeakHour()
             peakEndTime = PeakHourDetector.peakEndTime()
 
+            // Evaluate notifications
+            NotificationManager.shared.evaluateAndNotify(
+                sessionUtilization: sessionUtilization,
+                sessionResetTime: sessionResetTime,
+                burnRate: burnRate,
+                isPeakHour: isPeakHour
+            )
+
         } catch let apiError as APIError {
             error = apiError
             if case .invalidCookie = apiError {
                 cookieIsValid = false
+                NotificationManager.shared.notifyCookieExpired()
             }
         } catch {
             self.error = .networkError(error)
