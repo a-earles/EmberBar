@@ -101,8 +101,11 @@ struct PopoverView: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        if let appDelegate = NSApp.delegate as? AppDelegate {
-                            appDelegate.openSettings()
+                        // Delay so the popover can close first (transient behavior)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            if let appDelegate = NSApp.delegate as? AppDelegate {
+                                appDelegate.openSettings()
+                            }
                         }
                     } label: {
                         Image(systemName: "gear")

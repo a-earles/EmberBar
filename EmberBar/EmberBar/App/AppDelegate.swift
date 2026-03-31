@@ -9,6 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let appState = AppState()
     private var stateObservation: AnyCancellable?
     private var onboardingWindowController: OnboardingWindow?
+    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("[EmberBar] App launching...")
@@ -114,19 +115,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func openSettings() {
-        let settingsWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 320),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        settingsWindow.title = "EmberBar Settings"
-        settingsWindow.center()
-        settingsWindow.contentView = NSHostingView(
-            rootView: SettingsView()
-                .environmentObject(appState)
-        )
-        settingsWindow.makeKeyAndOrderFront(nil)
+        if settingsWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 420, height: 320),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "EmberBar Settings"
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(
+                rootView: SettingsView()
+                    .environmentObject(appState)
+            )
+            settingsWindow = window
+        }
+
+        // Center on screen with mouse cursor
+        if let window = settingsWindow, let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }) ?? NSScreen.main {
+            let sf = screen.visibleFrame
+            let wf = window.frame
+            window.setFrameOrigin(NSPoint(x: sf.midX - wf.width / 2, y: sf.midY - wf.height / 2))
+        }
+
+        settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 }
