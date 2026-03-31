@@ -5,14 +5,12 @@ import Combine
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var popover: NSPopover!
+    var popover: NSPopover!
     let appState = AppState()
     private var stateObservation: AnyCancellable?
     private var onboardingWindowController: OnboardingWindow?
-    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print("[EmberBar] App launching...")
         NSApp.setActivationPolicy(.accessory)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -29,8 +27,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 320, height: 420)
-        popover.behavior = .transient
+        popover.contentSize = NSSize(width: 320, height: 500)
+        popover.behavior = .semitransient
         popover.contentViewController = NSHostingController(
             rootView: PopoverView()
                 .environmentObject(appState)
@@ -40,14 +38,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.updateMenuBarIcon()
         }
 
-        print("[EmberBar] Status item created")
-
         if appState.settings.hasCompletedOnboarding && KeychainManager.hasCookie() {
-            print("[EmberBar] Onboarding complete, starting polling...")
             appState.cookieIsValid = true
             appState.startPolling()
         } else {
-            print("[EmberBar] Showing onboarding...")
             showOnboarding()
         }
 
@@ -58,7 +52,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
-        print("[EmberBar] Launch complete")
     }
 
     private func updateMenuBarIcon() {
@@ -94,10 +87,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         onboardingWindowController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
-        // Force center on the screen where the cursor is
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let window = self?.onboardingWindowController?.window else { return }
-            // Use the screen containing the mouse cursor
             let mouseLocation = NSEvent.mouseLocation
             var targetScreen = NSScreen.screens.first { NSMouseInRect(mouseLocation, $0.frame, false) }
             if targetScreen == nil { targetScreen = NSScreen.screens.last ?? NSScreen.main }
@@ -112,33 +103,5 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.orderFrontRegardless()
             NSApp.activate(ignoringOtherApps: true)
         }
-    }
-
-    func openSettings() {
-        if settingsWindow == nil {
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 420, height: 320),
-                styleMask: [.titled, .closable],
-                backing: .buffered,
-                defer: false
-            )
-            window.title = "EmberBar Settings"
-            window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(
-                rootView: SettingsView()
-                    .environmentObject(appState)
-            )
-            settingsWindow = window
-        }
-
-        // Center on screen with mouse cursor
-        if let window = settingsWindow, let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }) ?? NSScreen.main {
-            let sf = screen.visibleFrame
-            let wf = window.frame
-            window.setFrameOrigin(NSPoint(x: sf.midX - wf.width / 2, y: sf.midY - wf.height / 2))
-        }
-
-        settingsWindow?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
     }
 }
