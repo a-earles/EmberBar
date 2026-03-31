@@ -4,7 +4,7 @@ import SwiftUI
 class OnboardingWindow: NSWindowController {
     convenience init(appState: AppState, onComplete: @escaping () -> Void) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 480),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -43,9 +43,8 @@ struct OnboardingContainerView: View {
                         .frame(width: 8, height: 8)
                 }
             }
-            .padding(.top, 20)
-
-            Spacer()
+            .padding(.top, 24)
+            .padding(.bottom, 8)
 
             switch currentStep {
             case .welcome:
@@ -60,6 +59,6 @@ struct OnboardingContainerView: View {
 
             Spacer()
         }
-        .frame(width: 500, height: 420)
+        .frame(width: 500, height: 480)
     }
 }
