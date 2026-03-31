@@ -100,9 +100,9 @@ struct PasteValidateStep: View {
         validationError = nil
         validationSuccess = nil
 
-        Task {
-            let result = await appState.validateAndSaveCookie(cookie)
-            await MainActor.run {
+        Task { @MainActor in
+            do {
+                let result = await appState.validateAndSaveCookie(cookie)
                 isValidating = false
                 switch result {
                 case .success(let orgName):
@@ -117,10 +117,17 @@ struct PasteValidateStep: View {
                     switch error {
                     case .invalidCookie:
                         validationError = "Invalid cookie. Make sure you copied the entire Cookie value, not just part of it."
+                    case .networkError:
+                        validationError = "Network error. Check your internet connection and try again."
+                    case .decodingError:
+                        validationError = "Unexpected response from Claude. The cookie may be invalid or the API may have changed."
                     default:
                         validationError = error.localizedDescription
                     }
                 }
+            } catch {
+                isValidating = false
+                validationError = "Unexpected error: \(error.localizedDescription)"
             }
         }
     }

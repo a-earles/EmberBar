@@ -11,6 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingWindowController: OnboardingWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        print("[EmberBar] App launching...")
         NSApp.setActivationPolicy(.accessory)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -38,10 +39,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.updateMenuBarIcon()
         }
 
+        print("[EmberBar] Status item created")
+
         if appState.settings.hasCompletedOnboarding && KeychainManager.hasCookie() {
+            print("[EmberBar] Onboarding complete, starting polling...")
             appState.cookieIsValid = true
             appState.startPolling()
         } else {
+            print("[EmberBar] Showing onboarding...")
             showOnboarding()
         }
 
@@ -52,6 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+        print("[EmberBar] Launch complete")
     }
 
     private func updateMenuBarIcon() {
@@ -86,6 +92,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         onboardingWindowController?.showWindow(nil)
         onboardingWindowController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+
+        // Force center on the screen where the cursor is
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let window = self?.onboardingWindowController?.window else { return }
+            // Use the screen containing the mouse cursor
+            let mouseLocation = NSEvent.mouseLocation
+            var targetScreen = NSScreen.screens.first { NSMouseInRect(mouseLocation, $0.frame, false) }
+            if targetScreen == nil { targetScreen = NSScreen.screens.last ?? NSScreen.main }
+            if let screen = targetScreen {
+                let sf = screen.visibleFrame
+                let wf = window.frame
+                let x = sf.origin.x + (sf.width - wf.width) / 2
+                let y = sf.origin.y + (sf.height - wf.height) / 2
+                window.setFrameOrigin(NSPoint(x: x, y: y))
+            }
+            window.level = .floating
+            window.orderFrontRegardless()
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     func openSettings() {

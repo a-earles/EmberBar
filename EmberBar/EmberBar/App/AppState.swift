@@ -130,17 +130,22 @@ class AppState: ObservableObject {
     }
 
     func validateAndSaveCookie(_ cookie: String) async -> Result<String, APIError> {
+        print("[EmberBar] Validating cookie (\(cookie.prefix(20))...)")
         do {
             let (orgId, orgName) = try await apiClient.validateCookie(cookie)
+            print("[EmberBar] Cookie valid! org=\(orgName) id=\(orgId)")
             try KeychainManager.saveCookie(cookie)
+            print("[EmberBar] Cookie saved to Keychain")
             settings.cachedOrgId = orgId
             cookieIsValid = true
             planName = orgName
 
             await fetchUsage()
+            print("[EmberBar] Initial fetch complete")
 
             return .success(orgName)
         } catch let apiError as APIError {
+            print("[EmberBar] Validation failed: \(apiError)")
             return .failure(apiError)
         } catch {
             return .failure(.networkError(error))

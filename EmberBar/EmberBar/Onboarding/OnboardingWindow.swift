@@ -4,14 +4,22 @@ import SwiftUI
 class OnboardingWindow: NSWindowController {
     convenience init(appState: AppState, onComplete: @escaping () -> Void) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 480),
-            styleMask: [.titled, .closable],
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 560),
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "EmberBar Setup"
-        window.center()
         window.isReleasedWhenClosed = false
+        // Center on main screen (NSWindow.center() can fail for accessory apps)
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            let x = screenFrame.midX - 250
+            let y = screenFrame.midY - 280
+            window.setFrameOrigin(NSPoint(x: x, y: y))
+        } else {
+            window.center()
+        }
         window.contentView = NSHostingView(
             rootView: OnboardingContainerView(appState: appState, onComplete: {
                 onComplete()
@@ -59,6 +67,6 @@ struct OnboardingContainerView: View {
 
             Spacer()
         }
-        .frame(width: 500, height: 480)
+        .frame(minWidth: 500, minHeight: 500)
     }
 }
