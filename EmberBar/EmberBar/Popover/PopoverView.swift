@@ -159,34 +159,32 @@ struct SettingsPage: View {
     @Binding var currentPage: PopoverPage
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                FooterNSButton(title: "Back", systemImage: "chevron.left") {
-                    currentPage = .dashboard
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack {
+                    FooterNSButton(title: "Back", systemImage: "chevron.left") {
+                        currentPage = .dashboard
+                    }
+                    Spacer()
+                    Text("Settings")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                    Spacer()
+                    Color.clear.frame(width: 50, height: 1)
                 }
-                Spacer()
-                Text("Settings")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                Spacer()
-                Color.clear.frame(width: 50, height: 1) // balance
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 10)
+                .padding(.bottom, 12)
 
-            Rectangle()
-                .fill(Color.white.opacity(0.06))
-                .frame(height: 0.5)
+                // GENERAL
+                sectionHeader("General")
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // General
-                    SettingsSection(title: "General") {
+                VStack(spacing: 0) {
+                    settingsRow {
                         SettingsToggle(label: "Launch at login", isOn: $appState.settings.launchAtLogin)
-
+                    }
+                    settingsDivider()
+                    settingsRow {
                         HStack {
-                            Text("Refresh interval")
+                            Text("Refresh")
                                 .font(EmberTheme.bodyText)
                             Spacer()
                             Picker("", selection: $appState.settings.refreshIntervalSeconds) {
@@ -196,9 +194,11 @@ struct SettingsPage: View {
                                 Text("5m").tag(300.0)
                             }
                             .pickerStyle(.segmented)
-                            .frame(width: 170)
+                            .frame(width: 160)
                         }
-
+                    }
+                    settingsDivider()
+                    settingsRow {
                         HStack {
                             Text("Shortcut")
                                 .font(EmberTheme.bodyText)
@@ -207,22 +207,53 @@ struct SettingsPage: View {
                                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.white.opacity(0.06))
-                                .cornerRadius(6)
+                                .padding(.vertical, 3)
+                                .background(Color.white.opacity(0.08))
+                                .cornerRadius(5)
                         }
                     }
+                }
+                .background(EmberTheme.cardBackground)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(EmberTheme.cardBorder, lineWidth: 0.5)
+                )
+                .padding(.bottom, 16)
 
-                    // Notifications
-                    SettingsSection(title: "Notifications") {
-                        SettingsToggle(label: "Alert at 75% usage", isOn: $appState.settings.notifyAt75)
-                        SettingsToggle(label: "Alert at 90% usage", isOn: $appState.settings.notifyAt90)
+                // NOTIFICATIONS
+                sectionHeader("Notifications")
+
+                VStack(spacing: 0) {
+                    settingsRow {
+                        SettingsToggle(label: "At 75% usage", isOn: $appState.settings.notifyAt75)
+                    }
+                    settingsDivider()
+                    settingsRow {
+                        SettingsToggle(label: "At 90% usage", isOn: $appState.settings.notifyAt90)
+                    }
+                    settingsDivider()
+                    settingsRow {
                         SettingsToggle(label: "Burn rate warning", isOn: $appState.settings.notifyBurnRate)
+                    }
+                    settingsDivider()
+                    settingsRow {
                         SettingsToggle(label: "Peak hours alert", isOn: $appState.settings.notifyPeakHours)
                     }
+                }
+                .background(EmberTheme.cardBackground)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(EmberTheme.cardBorder, lineWidth: 0.5)
+                )
+                .padding(.bottom, 16)
 
-                    // Account
-                    SettingsSection(title: "Account") {
+                // ACCOUNT
+                sectionHeader("Account")
+
+                VStack(spacing: 0) {
+                    settingsRow {
                         HStack {
                             Text("Status")
                                 .font(EmberTheme.bodyText)
@@ -236,61 +267,67 @@ struct SettingsPage: View {
                                     .foregroundColor(appState.cookieIsValid ? EmberTheme.safe : EmberTheme.danger)
                             }
                         }
-
-                        FooterNSButton(title: "Update Cookie", systemImage: "key") {
+                    }
+                    settingsDivider()
+                    settingsRow {
+                        FooterNSButton(title: "Update Cookie...", systemImage: "key") {
                             if let appDelegate = NSApp.delegate as? AppDelegate {
                                 appDelegate.showOnboarding()
                             }
                         }
-
+                    }
+                    settingsDivider()
+                    settingsRow {
                         FooterNSButton(title: "Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
                             appState.signOut()
                             currentPage = .dashboard
                         }
                     }
-
-                    // About
-                    VStack(spacing: 6) {
-                        EmberLogo(size: 28)
-                        Text("EmberBar v1.0.0")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                        Text("No analytics \u{00B7} No telemetry \u{00B7} Privacy-first")
-                            .font(EmberTheme.tinyText)
-                            .foregroundColor(.secondary.opacity(0.5))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 4)
-                    .padding(.bottom, 8)
                 }
-                .padding(16)
+                .background(EmberTheme.cardBackground)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(EmberTheme.cardBorder, lineWidth: 0.5)
+                )
+                .padding(.bottom, 16)
+
+                // About
+                VStack(spacing: 4) {
+                    Text("EmberBar v1.0.0")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.4))
+                    Text("No analytics \u{00B7} No telemetry \u{00B7} Privacy-first")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.3))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 8)
             }
+            .padding(16)
         }
     }
-}
 
-struct SettingsSection<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(.system(size: 10, weight: .bold))
+            .foregroundColor(.secondary.opacity(0.5))
+            .tracking(0.8)
+            .padding(.leading, 4)
+            .padding(.bottom, 6)
+    }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title.uppercased())
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.secondary.opacity(0.6))
-                .tracking(1.0)
+    private func settingsRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+    }
 
-            VStack(alignment: .leading, spacing: 10) {
-                content
-            }
-            .padding(14)
-            .background(Color.white.opacity(0.04))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
-            )
-            .cornerRadius(10)
-        }
+    private func settingsDivider() -> some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.06))
+            .frame(height: 0.5)
+            .padding(.leading, 12)
     }
 }
 
