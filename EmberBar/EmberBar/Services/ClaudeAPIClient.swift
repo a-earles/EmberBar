@@ -198,27 +198,44 @@ private class WebViewNavigationDelegate: NSObject, WKNavigationDelegate {
                 return
             }
 
-            // Check for Cloudflare challenge page
+            // Check for Cloudflare challenge page — retry with increasing delays
             if text.contains("Just a moment") || text.contains("Enable JavaScript") {
-                // Wait a bit for Cloudflare to resolve, then retry
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    webView.evaluateJavaScript("document.body.innerText") { result2, error2 in
-                        guard !self.hasResumed else { return }
-                        self.hasResumed = true
-
-                        if let text2 = result2 as? String, !text2.contains("Just a moment") {
-                            self.continuation?.resume(returning: Data(text2.utf8))
-                        } else {
-                            self.continuation?.resume(throwing: APIError.cloudflareChallenge)
-                        }
-                        self.continuation = nil
-                    }
-                }
+                self.retryAfterCloudflare(webView: webView, attempt: 1)
                 return
             }
 
             self.continuation?.resume(returning: Data(text.utf8))
             self.continuation = nil
+        }
+    }
+
+    /// Retry extracting content after Cloudflare challenge, up to 5 attempts with increasing delays
+    private func retryAfterCloudflare(webView: WKWebView, attempt: Int) {
+        guard !hasResumed else { return }
+        let maxAttempts = 5
+        let delay = Double(attempt) * 2.0 // 2s, 4s, 6s, 8s, 10s
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self = self, !self.hasResumed else { return }
+
+            webView.evaluateJavaScript("document.body.innerText") { result, _ in
+                guard !self.hasResumed else { return }
+
+                if let text = result as? String,
+                   !text.isEmpty,
+                   !text.contains("Just a moment"),
+                   !text.contains("Enable JavaScript") {
+                    self.hasResumed = true
+                    self.continuation?.resume(returning: Data(text.utf8))
+                    self.continuation = nil
+                } else if attempt < maxAttempts {
+                    self.retryAfterCloudflare(webView: webView, attempt: attempt + 1)
+                } else {
+                    self.hasResumed = true
+                    self.continuation?.resume(throwing: APIError.cloudflareChallenge)
+                    self.continuation = nil
+                }
+            }
         }
     }
 
