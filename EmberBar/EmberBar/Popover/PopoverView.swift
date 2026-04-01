@@ -1,25 +1,49 @@
 import SwiftUI
+import AppKit
 
 enum PopoverPage {
     case dashboard
     case settings
 }
 
+// MARK: - Vibrancy Background
+
+struct VisualEffectBackground: NSViewRepresentable {
+    var material: NSVisualEffectView.Material
+    var blendingMode: NSVisualEffectView.BlendingMode
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+// MARK: - Root Popover
+
 struct PopoverView: View {
     @EnvironmentObject var appState: AppState
     @State private var currentPage: PopoverPage = .dashboard
 
     var body: some View {
-        VStack(spacing: 0) {
-            switch currentPage {
-            case .dashboard:
-                DashboardPage(currentPage: $currentPage)
-                    .environmentObject(appState)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-            case .settings:
-                SettingsPage(currentPage: $currentPage)
-                    .environmentObject(appState)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+        ZStack {
+            VisualEffectBackground(material: .popover, blendingMode: .behindWindow)
+
+            VStack(spacing: 0) {
+                switch currentPage {
+                case .dashboard:
+                    DashboardPage(currentPage: $currentPage)
+                        .environmentObject(appState)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                case .settings:
+                    SettingsPage(currentPage: $currentPage)
+                        .environmentObject(appState)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
         }
         .frame(width: 320)
@@ -50,7 +74,7 @@ struct DashboardPage: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Color.white.opacity(0.06))
-                        .cornerRadius(6)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
             }
             .padding(.bottom, 2)
@@ -159,27 +183,33 @@ struct SettingsPage: View {
     @Binding var currentPage: PopoverPage
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                HStack {
-                    FooterNSButton(title: "Back", systemImage: "chevron.left") {
-                        currentPage = .dashboard
-                    }
-                    Spacer()
-                    Text("Settings")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Spacer()
-                    Color.clear.frame(width: 50, height: 1)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                FooterNSButton(title: "Back", systemImage: "chevron.left") {
+                    currentPage = .dashboard
                 }
-                .padding(.bottom, 12)
+                Spacer()
+                Text("Settings")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                Spacer()
+                Color.clear.frame(width: 50, height: 1)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 10)
 
+            Rectangle()
+                .fill(Color.white.opacity(0.06))
+                .frame(height: 0.5)
+
+            // Content — no ScrollView, everything fits
+            VStack(alignment: .leading, spacing: 12) {
                 // GENERAL
                 sectionHeader("General")
-
-                VStack(spacing: 0) {
+                settingsCard {
                     settingsRow {
-                        SettingsToggle(label: "Launch at login", isOn: $appState.settings.launchAtLogin)
+                        NativeToggleRow(label: "Launch at login", isOn: $appState.settings.launchAtLogin)
                     }
                     settingsDivider()
                     settingsRow {
@@ -194,7 +224,7 @@ struct SettingsPage: View {
                                 Text("5m").tag(300.0)
                             }
                             .pickerStyle(.segmented)
-                            .frame(width: 160)
+                            .frame(width: 155)
                         }
                     }
                     settingsDivider()
@@ -209,50 +239,34 @@ struct SettingsPage: View {
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
                                 .background(Color.white.opacity(0.08))
-                                .cornerRadius(5)
+                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                         }
                     }
                 }
-                .background(EmberTheme.cardBackground)
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(EmberTheme.cardBorder, lineWidth: 0.5)
-                )
-                .padding(.bottom, 16)
 
                 // NOTIFICATIONS
                 sectionHeader("Notifications")
-
-                VStack(spacing: 0) {
+                settingsCard {
                     settingsRow {
-                        SettingsToggle(label: "At 75% usage", isOn: $appState.settings.notifyAt75)
+                        NativeToggleRow(label: "At 75% usage", isOn: $appState.settings.notifyAt75)
                     }
                     settingsDivider()
                     settingsRow {
-                        SettingsToggle(label: "At 90% usage", isOn: $appState.settings.notifyAt90)
+                        NativeToggleRow(label: "At 90% usage", isOn: $appState.settings.notifyAt90)
                     }
                     settingsDivider()
                     settingsRow {
-                        SettingsToggle(label: "Burn rate warning", isOn: $appState.settings.notifyBurnRate)
+                        NativeToggleRow(label: "Burn rate warning", isOn: $appState.settings.notifyBurnRate)
                     }
                     settingsDivider()
                     settingsRow {
-                        SettingsToggle(label: "Peak hours alert", isOn: $appState.settings.notifyPeakHours)
+                        NativeToggleRow(label: "Peak hours alert", isOn: $appState.settings.notifyPeakHours)
                     }
                 }
-                .background(EmberTheme.cardBackground)
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(EmberTheme.cardBorder, lineWidth: 0.5)
-                )
-                .padding(.bottom, 16)
 
                 // ACCOUNT
                 sectionHeader("Account")
-
-                VStack(spacing: 0) {
+                settingsCard {
                     settingsRow {
                         HStack {
                             Text("Status")
@@ -284,29 +298,27 @@ struct SettingsPage: View {
                         }
                     }
                 }
-                .background(EmberTheme.cardBackground)
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(EmberTheme.cardBorder, lineWidth: 0.5)
-                )
-                .padding(.bottom, 16)
+
+                Spacer()
 
                 // About
-                VStack(spacing: 4) {
+                VStack(spacing: 3) {
                     Text("EmberBar v1.0.0")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary.opacity(0.4))
+                        .foregroundColor(.secondary.opacity(0.35))
                     Text("No analytics \u{00B7} No telemetry \u{00B7} Privacy-first")
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary.opacity(0.3))
+                        .foregroundColor(.secondary.opacity(0.25))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.bottom, 8)
+                .padding(.bottom, 4)
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
         }
     }
+
+    // MARK: - Settings Helpers
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title.uppercased())
@@ -314,13 +326,25 @@ struct SettingsPage: View {
             .foregroundColor(.secondary.opacity(0.5))
             .tracking(0.8)
             .padding(.leading, 4)
-            .padding(.bottom, 6)
+            .padding(.bottom, 4)
+    }
+
+    private func settingsCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            content()
+        }
+        .background(EmberTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(EmberTheme.cardBorder, lineWidth: 0.5)
+        )
     }
 
     private func settingsRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
     }
 
     private func settingsDivider() -> some View {
@@ -331,15 +355,65 @@ struct SettingsPage: View {
     }
 }
 
-struct SettingsToggle: View {
+// MARK: - Native Toggle (NSButton-backed for reliable click handling)
+
+struct NativeToggleRow: NSViewRepresentable {
     let label: String
     @Binding var isOn: Bool
 
-    var body: some View {
-        Toggle(label, isOn: $isOn)
-            .font(EmberTheme.bodyText)
-            .toggleStyle(.switch)
-            .controlSize(.small)
+    func makeNSView(context: Context) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let labelField = NSTextField(labelWithString: label)
+        labelField.font = NSFont.systemFont(ofSize: 12)
+        labelField.textColor = .labelColor
+        labelField.translatesAutoresizingMaskIntoConstraints = false
+
+        let toggle = NSSwitch()
+        toggle.controlSize = .small
+        toggle.state = isOn ? .on : .off
+        toggle.target = context.coordinator
+        toggle.action = #selector(Coordinator.toggled(_:))
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(labelField)
+        container.addSubview(toggle)
+
+        NSLayoutConstraint.activate([
+            labelField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            labelField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            toggle.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            toggle.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            container.heightAnchor.constraint(equalToConstant: 22),
+            labelField.trailingAnchor.constraint(lessThanOrEqualTo: toggle.leadingAnchor, constant: -8),
+        ])
+
+        context.coordinator.toggle = toggle
+
+        return container
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.toggle?.state = isOn ? .on : .off
+        context.coordinator.isOn = $isOn
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isOn: $isOn)
+    }
+
+    class Coordinator: NSObject {
+        var isOn: Binding<Bool>
+        weak var toggle: NSSwitch?
+
+        init(isOn: Binding<Bool>) {
+            self.isOn = isOn
+        }
+
+        @objc func toggled(_ sender: NSSwitch) {
+            isOn.wrappedValue = sender.state == .on
+        }
     }
 }
 

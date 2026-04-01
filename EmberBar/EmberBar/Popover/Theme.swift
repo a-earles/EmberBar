@@ -50,11 +50,11 @@ struct CardStyle: ViewModifier {
         content
             .padding(EmberTheme.cardPadding)
             .background(EmberTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: EmberTheme.cardCornerRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: EmberTheme.cardCornerRadius)
+                RoundedRectangle(cornerRadius: EmberTheme.cardCornerRadius, style: .continuous)
                     .stroke(EmberTheme.cardBorder, lineWidth: 0.5)
             )
-            .cornerRadius(EmberTheme.cardCornerRadius)
     }
 }
 
