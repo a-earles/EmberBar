@@ -5,47 +5,59 @@ struct BurnRateCard: View {
 
     private var levelColor: Color {
         switch burnRate.level {
-        case .idle: return .gray
-        case .light: return .green
-        case .moderate: return .orange
-        case .fast: return .red
+        case .idle: return .secondary
+        case .light: return EmberTheme.safe
+        case .moderate: return EmberTheme.warning
+        case .fast: return EmberTheme.danger
+        }
+    }
+
+    private var levelIcon: String {
+        switch burnRate.level {
+        case .idle: return "minus"
+        case .light: return "chevron.down"
+        case .moderate: return "circle.fill"
+        case .fast: return "chevron.up"
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("BURN RATE")
-                    .font(.system(size: 11, weight: .medium))
+                Text("Burn Rate")
+                    .font(EmberTheme.sectionLabel)
                     .foregroundColor(.secondary)
-                    .tracking(0.5)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
                 Spacer()
-                Text(burnRate.level.rawValue)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(levelColor)
+                HStack(spacing: 4) {
+                    Image(systemName: levelIcon)
+                        .font(.system(size: 9, weight: .bold))
+                    Text(burnRate.level == .idle ? "Idle" : burnRate.level == .light ? "Light" : burnRate.level == .moderate ? "Moderate" : "Fast")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(levelColor)
             }
 
             if let minutes = burnRate.minutesUntilLimit {
-                HStack(spacing: 4) {
-                    Text("At this pace, you'll hit your limit in")
-                        .font(.system(size: 12))
+                HStack(spacing: 0) {
+                    Text("Limit in ")
+                        .font(EmberTheme.bodyText)
                         .foregroundColor(.secondary)
                     Text(TimeFormatting.minutesDuration(minutes))
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
                 }
             } else if burnRate.level == .idle {
-                Text("No recent usage detected")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                Text("No recent activity")
+                    .font(EmberTheme.bodyText)
+                    .foregroundColor(.secondary.opacity(0.7))
             } else {
                 Text("Calculating...")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .font(EmberTheme.bodyText)
+                    .foregroundColor(.secondary.opacity(0.7))
             }
         }
-        .padding(14)
-        .background(Color(.controlBackgroundColor).opacity(0.5))
-        .cornerRadius(10)
+        .cardStyle()
     }
 }

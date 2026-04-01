@@ -5,78 +5,55 @@ struct SessionCard: View {
     let resetTime: TimeInterval?
     let messagesRemaining: ClosedRange<Int>?
 
-    private var statusColor: Color {
-        switch utilization {
-        case ..<40: return .green
-        case ..<70: return .yellow
-        case ..<85: return .orange
-        default: return .red
-        }
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("SESSION USAGE")
-                    .font(.system(size: 11, weight: .medium))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Session")
+                    .font(EmberTheme.sectionLabel)
                     .foregroundColor(.secondary)
-                    .tracking(0.5)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
                 Spacer()
                 Text("\(Int(utilization))%")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundColor(statusColor)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(EmberTheme.statusColor(for: utilization))
             }
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(height: 6)
-                    RoundedRectangle(cornerRadius: 3)
+            // Progress bar with glow
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.white.opacity(0.08))
+                    .frame(height: 8)
+
+                GeometryReader { geo in
+                    RoundedRectangle(cornerRadius: 4)
                         .fill(
                             LinearGradient(
-                                colors: gradientColors,
+                                colors: EmberTheme.statusGradient(for: utilization),
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: geo.size.width * min(1, utilization / 100), height: 6)
+                        .frame(width: geo.size.width * min(1, max(0.02, utilization / 100)), height: 8)
+                        .shadow(color: EmberTheme.statusColor(for: utilization).opacity(0.5), radius: 4, y: 0)
                 }
             }
-            .frame(height: 6)
+            .frame(height: 8)
 
             HStack {
                 if let resetTime {
-                    Text("Resets in \(TimeFormatting.shortDuration(resetTime))")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("Reset time unknown")
-                        .font(.system(size: 11))
+                    Label(TimeFormatting.shortDuration(resetTime), systemImage: "clock")
+                        .font(EmberTheme.captionText)
                         .foregroundColor(.secondary)
                 }
                 Spacer()
                 if let range = messagesRemaining {
-                    Text("~\(range.lowerBound)-\(range.upperBound) msgs left")
-                        .font(.system(size: 11))
+                    Text("~\(range.lowerBound)–\(range.upperBound) msgs left")
+                        .font(EmberTheme.captionText)
                         .foregroundColor(.secondary)
                 }
             }
         }
-        .padding(14)
-        .background(Color(.controlBackgroundColor).opacity(0.5))
-        .cornerRadius(10)
-    }
-
-    private var gradientColors: [Color] {
-        if utilization < 40 {
-            return [.green]
-        } else if utilization < 70 {
-            return [.green, .yellow]
-        } else if utilization < 85 {
-            return [.green, .yellow, .orange]
-        } else {
-            return [.green, .orange, .red]
-        }
+        .cardStyle()
     }
 }

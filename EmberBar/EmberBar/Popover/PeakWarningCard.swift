@@ -4,49 +4,44 @@ struct PeakWarningCard: View {
     let peakEndTime: Date?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text("\u{26A1}")
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "bolt.fill")
                 .font(.system(size: 16))
+                .foregroundColor(EmberTheme.warning)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text("Peak Hours Active")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.orange)
+                    .foregroundColor(EmberTheme.warning)
 
-                if let endTime = peakEndTime {
-                    let remaining = endTime.timeIntervalSinceNow
-                    if remaining > 0 {
-                        Text("Usage may deplete 2x faster until \(localEndTimeString(endTime))")
-                            .font(.system(size: 11))
-                            .foregroundColor(.orange.opacity(0.7))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                if let endTime = peakEndTime, endTime.timeIntervalSinceNow > 0 {
+                    Text("2x burn rate until \(localEndTimeString(endTime))")
+                        .font(EmberTheme.captionText)
+                        .foregroundColor(EmberTheme.warning.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text("Usage may deplete 2x faster during peak hours (5am–11am PT)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.orange.opacity(0.7))
+                    Text("Usage may deplete faster (5am\u{2013}11am PT)")
+                        .font(EmberTheme.captionText)
+                        .foregroundColor(EmberTheme.warning.opacity(0.7))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
-        .padding(12)
+        .padding(EmberTheme.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.1))
+        .background(EmberTheme.warning.opacity(0.08))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: EmberTheme.cardCornerRadius)
+                .stroke(EmberTheme.warning.opacity(0.2), lineWidth: 0.5)
         )
-        .cornerRadius(10)
+        .cornerRadius(EmberTheme.cardCornerRadius)
     }
 
-    /// Shows the peak end time in the user's local timezone
     private func localEndTimeString(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
         formatter.timeZone = TimeZone.current
         let localTime = formatter.string(from: date)
-
-        // Add timezone abbreviation so users know it's localized
         let tzAbbr = TimeZone.current.abbreviation() ?? ""
         return "\(localTime) \(tzAbbr)"
     }

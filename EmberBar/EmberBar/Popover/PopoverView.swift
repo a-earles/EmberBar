@@ -15,12 +15,15 @@ struct PopoverView: View {
             case .dashboard:
                 DashboardPage(currentPage: $currentPage)
                     .environmentObject(appState)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
             case .settings:
                 SettingsPage(currentPage: $currentPage)
                     .environmentObject(appState)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .frame(width: 320)
+        .animation(.easeInOut(duration: 0.2), value: currentPage)
     }
 }
 
@@ -34,32 +37,32 @@ struct DashboardPage: View {
         VStack(spacing: 10) {
             // Header
             HStack {
-                HStack(spacing: 6) {
-                    Text("\u{1F525}")
-                        .font(.system(size: 16))
+                HStack(spacing: 8) {
+                    EmberLogo(size: 22)
                     Text("EmberBar")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                 }
                 Spacer()
                 if !appState.planName.isEmpty {
                     Text(appState.planName)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.gray.opacity(0.15))
-                        .cornerRadius(4)
+                        .padding(.vertical, 3)
+                        .background(Color.white.opacity(0.06))
+                        .cornerRadius(6)
                 }
             }
-            .padding(.bottom, 4)
+            .padding(.bottom, 2)
 
             if !appState.cookieIsValid {
                 VStack(spacing: 12) {
+                    EmberLogo(size: 48)
                     Text("Not Connected")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
                     Text("Set up your session cookie to start tracking.")
-                        .font(.system(size: 12))
+                        .font(EmberTheme.bodyText)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                     Button("Set Up Cookie") {
@@ -68,18 +71,19 @@ struct DashboardPage: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(EmberTheme.ember)
                 }
                 .frame(maxHeight: .infinity)
             } else if appState.usageResponse == nil && appState.isLoading {
                 VStack(spacing: 8) {
                     ProgressView()
-                    Text("Loading usage data...")
-                        .font(.system(size: 12))
+                        .controlSize(.small)
+                    Text("Loading...")
+                        .font(EmberTheme.bodyText)
                         .foregroundColor(.secondary)
                 }
                 .frame(maxHeight: .infinity)
             } else {
-                // Cards
                 SessionCard(
                     utilization: appState.sessionUtilization,
                     resetTime: appState.sessionResetTime,
@@ -100,26 +104,28 @@ struct DashboardPage: View {
                 if let error = appState.error {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
+                            .foregroundColor(EmberTheme.warning)
                             .font(.system(size: 10))
                         Text(error.localizedDescription)
-                            .font(.system(size: 11))
-                            .foregroundColor(.orange)
+                            .font(EmberTheme.captionText)
+                            .foregroundColor(EmberTheme.warning)
                     }
                     .padding(.top, 2)
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
                 // Footer
                 VStack(spacing: 6) {
                     if let elapsed = appState.timeSinceLastUpdate {
                         Text("Updated \(TimeFormatting.shortDuration(elapsed)) ago")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary.opacity(0.5))
+                            .font(EmberTheme.tinyText)
+                            .foregroundColor(.secondary.opacity(0.4))
                     }
 
-                    Divider()
+                    Rectangle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(height: 0.5)
 
                     HStack(spacing: 0) {
                         FooterNSButton(title: "Open Claude", systemImage: "globe") {
@@ -139,14 +145,14 @@ struct DashboardPage: View {
                         }
                     }
                 }
-                .padding(.top, 4)
+                .padding(.top, 2)
             }
         }
         .padding(16)
     }
 }
 
-// MARK: - Settings Page (inside popover)
+// MARK: - Settings Page
 
 struct SettingsPage: View {
     @EnvironmentObject var appState: AppState
@@ -154,36 +160,34 @@ struct SettingsPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with back button
+            // Header
             HStack {
                 FooterNSButton(title: "Back", systemImage: "chevron.left") {
                     currentPage = .dashboard
                 }
                 Spacer()
                 Text("Settings")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                 Spacer()
-                // Invisible spacer to center title
-                Text("Back")
-                    .font(.system(size: 11))
-                    .hidden()
-                    .frame(width: 50)
+                Color.clear.frame(width: 50, height: 1) // balance
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
-            .padding(.bottom, 8)
+            .padding(.bottom, 10)
 
-            Divider()
+            Rectangle()
+                .fill(Color.white.opacity(0.06))
+                .frame(height: 0.5)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
                     // General
                     SettingsSection(title: "General") {
                         SettingsToggle(label: "Launch at login", isOn: $appState.settings.launchAtLogin)
 
                         HStack {
                             Text("Refresh interval")
-                                .font(.system(size: 12))
+                                .font(EmberTheme.bodyText)
                             Spacer()
                             Picker("", selection: $appState.settings.refreshIntervalSeconds) {
                                 Text("30s").tag(30.0)
@@ -192,19 +196,20 @@ struct SettingsPage: View {
                                 Text("5m").tag(300.0)
                             }
                             .pickerStyle(.segmented)
-                            .frame(width: 180)
+                            .frame(width: 170)
                         }
 
                         HStack {
-                            Text("Keyboard shortcut")
-                                .font(.system(size: 12))
+                            Text("Shortcut")
+                                .font(EmberTheme.bodyText)
                             Spacer()
-                            Text("⌘⇧E")
-                                .font(.system(size: 11, design: .monospaced))
+                            Text("\u{2318}\u{21E7}E")
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundColor(.secondary)
                                 .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.gray.opacity(0.2))
-                                .cornerRadius(4)
+                                .padding(.vertical, 4)
+                                .background(Color.white.opacity(0.06))
+                                .cornerRadius(6)
                         }
                     }
 
@@ -220,26 +225,19 @@ struct SettingsPage: View {
                     SettingsSection(title: "Account") {
                         HStack {
                             Text("Status")
-                                .font(.system(size: 12))
+                                .font(EmberTheme.bodyText)
                             Spacer()
-                            if appState.cookieIsValid {
-                                HStack(spacing: 4) {
-                                    Circle().fill(Color.green).frame(width: 6, height: 6)
-                                    Text("Connected")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.green)
-                                }
-                            } else {
-                                HStack(spacing: 4) {
-                                    Circle().fill(Color.red).frame(width: 6, height: 6)
-                                    Text("Not connected")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.red)
-                                }
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(appState.cookieIsValid ? EmberTheme.safe : EmberTheme.danger)
+                                    .frame(width: 7, height: 7)
+                                Text(appState.cookieIsValid ? "Connected" : "Disconnected")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(appState.cookieIsValid ? EmberTheme.safe : EmberTheme.danger)
                             }
                         }
 
-                        FooterNSButton(title: "Update Cookie...", systemImage: "key") {
+                        FooterNSButton(title: "Update Cookie", systemImage: "key") {
                             if let appDelegate = NSApp.delegate as? AppDelegate {
                                 appDelegate.showOnboarding()
                             }
@@ -252,16 +250,18 @@ struct SettingsPage: View {
                     }
 
                     // About
-                    VStack(spacing: 4) {
+                    VStack(spacing: 6) {
+                        EmberLogo(size: 28)
                         Text("EmberBar v1.0.0")
-                            .font(.system(size: 11))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
-                        Text("No analytics · No telemetry · Privacy-first")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary.opacity(0.6))
+                        Text("No analytics \u{00B7} No telemetry \u{00B7} Privacy-first")
+                            .font(EmberTheme.tinyText)
+                            .foregroundColor(.secondary.opacity(0.5))
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
+                    .padding(.top, 4)
+                    .padding(.bottom, 8)
                 }
                 .padding(16)
             }
@@ -276,15 +276,20 @@ struct SettingsSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title.uppercased())
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.secondary)
-                .tracking(0.5)
-            VStack(alignment: .leading, spacing: 8) {
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.secondary.opacity(0.6))
+                .tracking(1.0)
+
+            VStack(alignment: .leading, spacing: 10) {
                 content
             }
-            .padding(12)
-            .background(Color(.controlBackgroundColor).opacity(0.5))
-            .cornerRadius(8)
+            .padding(14)
+            .background(Color.white.opacity(0.04))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+            )
+            .cornerRadius(10)
         }
     }
 }
@@ -295,13 +300,13 @@ struct SettingsToggle: View {
 
     var body: some View {
         Toggle(label, isOn: $isOn)
-            .font(.system(size: 12))
+            .font(EmberTheme.bodyText)
             .toggleStyle(.switch)
             .controlSize(.small)
     }
 }
 
-// MARK: - Footer Button (NSButton-backed for reliable clicks in NSPopover)
+// MARK: - Footer Button (NSButton-backed)
 
 struct FooterNSButton: NSViewRepresentable {
     let title: String
@@ -318,12 +323,11 @@ struct FooterNSButton: NSViewRepresentable {
         button.contentTintColor = .secondaryLabelColor
 
         if let image = NSImage(systemSymbolName: systemImage, accessibilityDescription: title) {
-            let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
+            let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)
             button.image = image.withSymbolConfiguration(config)
             button.imagePosition = .imageLeading
         }
         button.title = title
-
         return button
     }
 
