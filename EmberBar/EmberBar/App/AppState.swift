@@ -130,10 +130,10 @@ class AppState: ObservableObject {
     }
 
     func validateAndSaveCookie(_ cookie: String) async -> Result<String, APIError> {
-        print("[EmberBar] Validating cookie (\(cookie.prefix(20))...)")
+        print("[EmberBar] Validating cookie (length: \(cookie.count))...")
         do {
             let (orgId, orgName) = try await apiClient.validateCookie(cookie)
-            print("[EmberBar] Cookie valid! org=\(orgName) id=\(orgId)")
+            print("[EmberBar] Cookie validated successfully")
             try KeychainManager.saveCookie(cookie)
             print("[EmberBar] Cookie saved to Keychain")
             settings.cachedOrgId = orgId

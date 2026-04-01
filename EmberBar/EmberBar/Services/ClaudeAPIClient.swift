@@ -118,7 +118,9 @@ class ClaudeAPIClient {
     }
 
     func fetchUsage(cookie: String, orgId: String) async throws -> UsageResponse {
-        guard let url = URL(string: "https://claude.ai/api/organizations/\(orgId)/usage") else {
+        // Validate orgId is a UUID to prevent URL injection
+        guard orgId.range(of: #"^[0-9a-fA-F\-]{36}$"#, options: .regularExpression) != nil,
+              let url = URL(string: "https://claude.ai/api/organizations/\(orgId)/usage") else {
             throw APIError.invalidResponse(0)
         }
 
@@ -170,6 +172,14 @@ private class WebViewNavigationDelegate: NSObject, WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard !hasResumed else { return }
+
+        // Verify we're still on claude.ai (prevent redirect-based attacks)
+        guard let finalURL = webView.url, finalURL.host?.hasSuffix("claude.ai") == true else {
+            hasResumed = true
+            continuation?.resume(throwing: APIError.invalidResponse(0))
+            continuation = nil
+            return
+        }
 
         // Extract the page content (should be JSON for API endpoints)
         webView.evaluateJavaScript("document.body.innerText") { [weak self] result, error in

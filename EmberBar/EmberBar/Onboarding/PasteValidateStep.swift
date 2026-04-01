@@ -96,6 +96,16 @@ struct PasteValidateStep: View {
         let cookie = cookieText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cookie.isEmpty else { return }
 
+        // Input validation
+        guard cookie.count <= 8192 else {
+            validationError = "Cookie value is too long. Please copy only the Cookie header value."
+            return
+        }
+        guard cookie.contains("sessionKey=") else {
+            validationError = "This doesn't look like a valid Claude cookie. Make sure it contains 'sessionKey='."
+            return
+        }
+
         isValidating = true
         validationError = nil
         validationSuccess = nil
