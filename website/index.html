@@ -884,7 +884,7 @@
         <div class="step-content">
           <div class="step-title">Download &amp; Install</div>
           <p class="step-desc">Grab the latest release from GitHub. Drag EmberBar into your Applications folder. It launches straight into the menu bar — no dock icon, no clutter.</p>
-          <span class="step-code">First launch: right-click &rarr; Open (macOS requires this for unsigned apps)</span>
+          <span class="step-code">First launch: open Terminal, run xattr -cr /Applications/EmberBar.app</span>
         </div>
       </div>
       <div class="step reveal d1">
@@ -983,7 +983,7 @@
       </div>
       <div class="faq-item">
         <button class="faq-q">macOS says the app "can't be opened" — what do I do?<span class="faq-chevron">▾</span></button>
-        <div class="faq-a"><div class="faq-a-inner">EmberBar isn't notarised with Apple yet (it requires a paid Developer ID certificate). On first launch, macOS Gatekeeper will block it. To open it: right-click (or Control-click) the app in your Applications folder and select <strong>Open</strong>. You'll see a dialog asking to confirm — click Open. You only need to do this once; after that it opens normally. This is standard for indie and open-source macOS apps.</div></div>
+        <div class="faq-a"><div class="faq-a-inner">EmberBar isn't notarised with Apple yet (it requires a paid Developer ID certificate). On first launch, macOS Gatekeeper will block it. To fix this, open Terminal and run: <strong>xattr -cr /Applications/EmberBar.app</strong> — then open EmberBar normally. You only need to do this once. This is standard for indie and open-source macOS apps distributed outside the App Store.</div></div>
       </div>
       <div class="faq-item">
         <button class="faq-q">What macOS versions are supported?<span class="faq-chevron">▾</span></button>

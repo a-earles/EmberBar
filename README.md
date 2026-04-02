@@ -27,7 +27,11 @@ EmberBar sits in your menu bar and polls your Claude usage data, displaying a co
 
 Grab the latest `.dmg` from [Releases](https://github.com/a-earles/EmberBar/releases), drag to Applications, and launch.
 
-> On first launch, macOS may block the app (it's not notarised yet). Right-click the app and select **Open** to bypass Gatekeeper.
+> On first launch, macOS will block the app (it's not notarised yet). Open Terminal and run:
+> ```
+> xattr -cr /Applications/EmberBar.app
+> ```
+> Then open EmberBar from Applications normally. You only need to do this once.
 
 ### Sign In
 
