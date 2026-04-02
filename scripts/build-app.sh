@@ -103,27 +103,34 @@ codesign --verify --verbose "$APP_BUNDLE" 2>&1 && echo "  Verification: OK" || e
 
 # Step 5: Create DMG (if --dmg flag passed)
 if [ "${1:-}" = "--dmg" ]; then
-    echo "[5/5] Creating DMG..."
+    echo "[5/5] Creating styled DMG..."
     rm -f "$DMG_PATH"
 
-    # Create a temporary directory for DMG contents
-    DMG_TMP="$BUILD_DIR/dmg-tmp"
-    rm -rf "$DMG_TMP"
-    mkdir -p "$DMG_TMP"
-
-    # Copy app bundle
-    cp -R "$APP_BUNDLE" "$DMG_TMP/"
-
-    # Create a symlink to /Applications
-    ln -s /Applications "$DMG_TMP/Applications"
-
-    # Create the DMG
-    hdiutil create -volname "$APP_NAME" \
-        -srcfolder "$DMG_TMP" \
-        -ov -format UDZO \
-        "$DMG_PATH" 2>&1 | tail -2
-
-    rm -rf "$DMG_TMP"
+    if command -v create-dmg &>/dev/null; then
+        # Use create-dmg for a polished installer with icon layout
+        create-dmg \
+            --volname "$APP_NAME" \
+            --window-pos 200 120 \
+            --window-size 540 380 \
+            --icon-size 96 \
+            --icon "$APP_NAME.app" 140 170 \
+            --app-drop-link 400 170 \
+            --no-internet-enable \
+            "$DMG_PATH" \
+            "$APP_BUNDLE" 2>&1 | tail -3
+    else
+        # Fallback: simple DMG with Applications symlink
+        DMG_TMP="$BUILD_DIR/dmg-tmp"
+        rm -rf "$DMG_TMP"
+        mkdir -p "$DMG_TMP"
+        cp -R "$APP_BUNDLE" "$DMG_TMP/"
+        ln -s /Applications "$DMG_TMP/Applications"
+        hdiutil create -volname "$APP_NAME" \
+            -srcfolder "$DMG_TMP" \
+            -ov -format UDZO \
+            "$DMG_PATH" 2>&1 | tail -2
+        rm -rf "$DMG_TMP"
+    fi
 
     DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
     echo "  DMG: $DMG_PATH ($DMG_SIZE)"
