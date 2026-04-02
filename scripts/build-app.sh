@@ -79,24 +79,16 @@ echo "  Icon: $APP_BUNDLE/Contents/Resources/AppIcon.icns"
 
 # Step 4: Ad-hoc code sign
 # Use the project entitlements but strip any Xcode-only variables first
-echo "[4/5] Code signing (ad-hoc)..."
-ADHOC_ENTITLEMENTS=$(mktemp)
-# Create minimal entitlements without $(AppIdentifierPrefix) which doesn't resolve for ad-hoc
-cat > "$ADHOC_ENTITLEMENTS" << 'ENTEOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>com.apple.security.app-sandbox</key>
-    <false/>
-</dict>
-</plist>
-ENTEOF
-codesign --force --deep --sign - \
-    --entitlements "$ADHOC_ENTITLEMENTS" \
+# Code signing identity
+SIGN_IDENTITY="Developer ID Application: Adam Earles (5SMUM7H28D)"
+NOTARY_PROFILE="EmberBar"
+
+echo "[4/6] Code signing with Developer ID..."
+codesign --force --deep --sign "$SIGN_IDENTITY" \
+    --options runtime \
+    --entitlements "$PROJECT_DIR/$APP_NAME/$APP_NAME.entitlements" \
     "$APP_BUNDLE" 2>&1
-rm -f "$ADHOC_ENTITLEMENTS"
-echo "  Signed: $(codesign -dv "$APP_BUNDLE" 2>&1 | grep 'Identifier' || echo 'ad-hoc')"
+echo "  Signed: $(codesign -dv "$APP_BUNDLE" 2>&1 | grep 'TeamIdentifier' || echo 'unknown')"
 
 # Verify
 codesign --verify --verbose "$APP_BUNDLE" 2>&1 && echo "  Verification: OK" || echo "  Verification: WARNING"
@@ -134,8 +126,20 @@ if [ "${1:-}" = "--dmg" ]; then
 
     DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
     echo "  DMG: $DMG_PATH ($DMG_SIZE)"
+
+    # Step 6: Notarise the DMG
+    echo "[6/6] Notarising with Apple..."
+    xcrun notarytool submit "$DMG_PATH" \
+        --keychain-profile "$NOTARY_PROFILE" \
+        --wait 2>&1
+
+    echo "  Stapling notarisation ticket..."
+    xcrun stapler staple "$DMG_PATH" 2>&1
+
+    echo "  Notarisation complete"
 else
-    echo "[5/5] Skipping DMG (pass --dmg to create)"
+    echo "[5/6] Skipping DMG (pass --dmg to create)"
+    echo "[6/6] Skipping notarisation (no DMG)"
 fi
 
 APP_SIZE=$(du -sh "$APP_BUNDLE" | cut -f1)
