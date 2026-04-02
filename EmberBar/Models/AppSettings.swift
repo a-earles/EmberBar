@@ -49,6 +49,10 @@ class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(cachedOrgId, forKey: "cachedOrgId") }
     }
 
+    @Published var hasPromptedAccessibility: Bool {
+        didSet { UserDefaults.standard.set(hasPromptedAccessibility, forKey: "hasPromptedAccessibility") }
+    }
+
     private init() {
         let defaults = UserDefaults.standard
         // Read actual system state so the toggle reflects reality
@@ -60,5 +64,6 @@ class AppSettings: ObservableObject {
         self.notifyPeakHours = defaults.object(forKey: "notifyPeakHours") as? Bool ?? true
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
         self.cachedOrgId = defaults.string(forKey: "cachedOrgId")
+        self.hasPromptedAccessibility = defaults.bool(forKey: "hasPromptedAccessibility")
     }
 }

@@ -64,6 +64,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             showOnboarding()
         }
 
+        // Check Accessibility permission for global keyboard shortcut
+        if !AXIsProcessTrusted() {
+            // Show prompt on first launch only, not every time
+            if !appState.settings.hasPromptedAccessibility {
+                appState.settings.hasPromptedAccessibility = true
+                showAccessibilityPrompt()
+            }
+        }
+
         // Global shortcut: Ctrl+Shift+E — requires Accessibility permission
         NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -131,6 +140,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             window.level = .floating
             window.orderFrontRegardless()
             NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    private func showAccessibilityPrompt() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Permission Required"
+        alert.informativeText = "EmberBar needs Accessibility permission to use the Ctrl+Shift+E keyboard shortcut.\n\nPlease enable it in:\nSystem Settings → Privacy & Security → Accessibility"
+        alert.alertStyle = .informational
+        if let icon = NSImage(named: NSImage.applicationIconName) {
+            alert.icon = icon
+        }
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Skip for Now")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
         }
     }
 }
