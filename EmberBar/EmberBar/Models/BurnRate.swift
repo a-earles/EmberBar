@@ -29,6 +29,10 @@ struct BurnRateData {
         level: .idle
     )
 
+    // Minimum observation window before reporting a rate.
+    // Prevents a single prompt spike from producing a wildly inflated burn rate.
+    private static let minimumWindowMinutes = 5.0
+
     static func compute(from samples: [UsageSample], currentUtilization: Double) -> BurnRateData {
         guard samples.count >= 3 else { return .calculating }
 
@@ -36,10 +40,11 @@ struct BurnRateData {
         guard let oldest = sorted.first, let newest = sorted.last else { return .calculating }
 
         let timeDelta = newest.timestamp.timeIntervalSince(oldest.timestamp) / 60.0
-        guard timeDelta > 0 else { return .calculating }
+        guard timeDelta >= minimumWindowMinutes else { return .calculating }
 
-        let utilizationDelta = newest.utilization - oldest.utilization
-        let ratePerMinute = max(0, utilizationDelta / timeDelta)
+        // Linear regression over all samples gives a stable slope even when
+        // individual prompts cause bursty jumps (old first/last delta was too volatile).
+        let ratePerMinute = max(0, linearRegressionSlope(samples: sorted))
 
         let level: BurnRateLevel
         switch ratePerMinute {
@@ -75,6 +80,25 @@ struct BurnRateData {
             estimatedMessagesRemaining: estimatedMessages,
             level: level
         )
+    }
+
+    // Returns the best-fit slope (% per minute) over all samples via OLS linear regression.
+    // Far more stable than (newest - oldest) / time because individual prompt spikes
+    // are smoothed by the surrounding plateau readings.
+    private static func linearRegressionSlope(samples: [UsageSample]) -> Double {
+        let n = Double(samples.count)
+        let t0 = samples[0].timestamp
+        let xs = samples.map { $0.timestamp.timeIntervalSince(t0) / 60.0 }
+        let ys = samples.map { $0.utilization }
+
+        let sumX = xs.reduce(0, +)
+        let sumY = ys.reduce(0, +)
+        let sumXY = zip(xs, ys).map { $0 * $1 }.reduce(0, +)
+        let sumXX = xs.map { $0 * $0 }.reduce(0, +)
+
+        let denom = n * sumXX - sumX * sumX
+        guard abs(denom) > 1e-10 else { return 0 }
+        return (n * sumXY - sumX * sumY) / denom
     }
 }
 

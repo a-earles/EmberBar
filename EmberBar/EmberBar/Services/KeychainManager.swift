@@ -7,50 +7,52 @@ enum KeychainError: Error {
     case deleteFailed(OSStatus)
 }
 
-/// Cookie storage that uses UserDefaults for development builds (no code signature = keychain prompts)
-/// and Keychain for signed production builds.
+/// Cookie storage: uses UserDefaults in DEBUG builds (avoids keychain prompts on every rebuild)
+/// and macOS Keychain in release/production builds.
 struct KeychainManager {
     private static let service = "com.emberbar.session-cookie"
     private static let account = "claude-session"
     private static let defaultsKey = "emberbar-session-cookie"
 
-    // Use Keychain only if the app has a bundle identifier (signed/packaged build)
-    private static var useKeychain: Bool {
-        Bundle.main.bundleIdentifier != nil && Bundle.main.bundleIdentifier != ""
-    }
-
+    #if DEBUG
+    // Development: UserDefaults only — never touch Keychain (avoids password prompts on rebuild)
     static func saveCookie(_ cookie: String) throws {
-        if useKeychain {
-            try saveToKeychain(cookie)
-        } else {
-            UserDefaults.standard.set(cookie, forKey: defaultsKey)
-        }
+        UserDefaults.standard.set(cookie, forKey: defaultsKey)
     }
 
     static func loadCookie() -> String? {
-        if useKeychain {
-            return loadFromKeychain()
-        } else {
-            // Try UserDefaults first, fall back to Keychain (migration)
-            if let cookie = UserDefaults.standard.string(forKey: defaultsKey) {
-                return cookie
-            }
-            return loadFromKeychain()
-        }
+        UserDefaults.standard.string(forKey: defaultsKey)
     }
 
     static func deleteCookie() throws {
         UserDefaults.standard.removeObject(forKey: defaultsKey)
-        if useKeychain {
-            try deleteFromKeychain()
-        }
     }
+    #else
+    // Production: use Keychain with ThisDeviceOnly
+    static func saveCookie(_ cookie: String) throws {
+        try saveToKeychain(cookie)
+    }
+
+    static func loadCookie() -> String? {
+        // One-time migration from UserDefaults to Keychain
+        if let legacy = UserDefaults.standard.string(forKey: defaultsKey) {
+            try? saveToKeychain(legacy)
+            UserDefaults.standard.removeObject(forKey: defaultsKey)
+        }
+        return loadFromKeychain()
+    }
+
+    static func deleteCookie() throws {
+        UserDefaults.standard.removeObject(forKey: defaultsKey)
+        try deleteFromKeychain()
+    }
+    #endif
 
     static func hasCookie() -> Bool {
         loadCookie() != nil
     }
 
-    // MARK: - Keychain Operations (for signed builds)
+    // MARK: - Keychain Operations
 
     private static func saveToKeychain(_ cookie: String) throws {
         let data = Data(cookie.utf8)
@@ -67,7 +69,7 @@ struct KeychainManager {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)

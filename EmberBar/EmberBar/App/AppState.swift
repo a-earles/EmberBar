@@ -100,9 +100,9 @@ class AppState: ObservableObject {
             lastUpdated = Date()
             cookieIsValid = true
 
-            if let session = response.fiveHour {
-                burnRateCalculator.addSample(utilization: session.utilization)
-                burnRate = burnRateCalculator.currentBurnRate(currentUtilization: session.utilization)
+            if let session = response.fiveHour, let util = session.utilization {
+                burnRateCalculator.addSample(utilization: util)
+                burnRate = burnRateCalculator.currentBurnRate(currentUtilization: util)
             }
 
             isPeakHour = PeakHourDetector.isPeakHour()
@@ -130,22 +130,32 @@ class AppState: ObservableObject {
     }
 
     func validateAndSaveCookie(_ cookie: String) async -> Result<String, APIError> {
+        #if DEBUG
         print("[EmberBar] Validating cookie (length: \(cookie.count))...")
+        #endif
         do {
             let (orgId, orgName) = try await apiClient.validateCookie(cookie)
+            #if DEBUG
             print("[EmberBar] Cookie validated successfully")
+            #endif
             try KeychainManager.saveCookie(cookie)
+            #if DEBUG
             print("[EmberBar] Cookie saved to Keychain")
+            #endif
             settings.cachedOrgId = orgId
             cookieIsValid = true
             planName = orgName
 
             await fetchUsage()
+            #if DEBUG
             print("[EmberBar] Initial fetch complete")
+            #endif
 
             return .success(orgName)
         } catch let apiError as APIError {
+            #if DEBUG
             print("[EmberBar] Validation failed: \(apiError)")
+            #endif
             return .failure(apiError)
         } catch {
             return .failure(.networkError(error))
@@ -161,6 +171,7 @@ class AppState: ObservableObject {
         burnRate = .calculating
         burnRateCalculator.reset()
         cookieIsValid = false
+        planName = ""
         lastUpdated = nil
         error = nil
     }

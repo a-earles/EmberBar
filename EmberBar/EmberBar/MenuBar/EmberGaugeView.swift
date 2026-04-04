@@ -17,6 +17,7 @@ struct EmberGaugeRenderer {
             context.strokePath()
 
             if isValid {
+                // Green arc = fuel remaining. Shrinks as usage increases.
                 let remaining = max(0, min(1, 1.0 - utilization / 100.0))
                 let startAngle = CGFloat.pi / 2
                 let endAngle = startAngle + CGFloat.pi * 2 * CGFloat(remaining)

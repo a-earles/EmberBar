@@ -4,9 +4,7 @@
 <dict>
     <key>com.apple.security.app-sandbox</key>
     <false/>
-    <key>keychain-access-groups</key>
-    <array>
-        <string>$(AppIdentifierPrefix)com.emberbar.app</string>
-    </array>
+    <!-- keychain-access-groups requires a Developer ID team prefix.
+         Omit for ad-hoc signing; keychain access works without it. -->
 </dict>
 </plist>

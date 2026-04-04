@@ -1,2 +1,13 @@
 .superpowers/
 .DS_Store
+.playwright-mcp/
+.env
+.env.*
+*.p12
+*.pem
+*.cer
+*.mobileprovision
+*.provisionprofile
+DerivedData/
+.build/
+*.dmg

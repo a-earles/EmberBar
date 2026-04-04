@@ -1,5 +1,8 @@
 import Foundation
+import ObjectiveC
 import WebKit
+
+private var navDelegateKey: UInt8 = 0
 
 enum APIError: Error, LocalizedError {
     case noCookie
@@ -83,7 +86,7 @@ class ClaudeAPIClient {
             wv.navigationDelegate = delegate
 
             // Hold a strong reference to the delegate
-            objc_setAssociatedObject(wv, "navDelegate", delegate, .OBJC_ASSOCIATION_RETAIN)
+            objc_setAssociatedObject(wv, &navDelegateKey, delegate, .OBJC_ASSOCIATION_RETAIN)
 
             let request = URLRequest(url: url, timeoutInterval: 30)
             wv.load(request)
@@ -91,7 +94,7 @@ class ClaudeAPIClient {
             // Timeout after 30 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak wv] in
                 guard let wv = wv else { return }
-                let del = objc_getAssociatedObject(wv, "navDelegate") as? WebViewNavigationDelegate
+                let del = objc_getAssociatedObject(wv, &navDelegateKey) as? WebViewNavigationDelegate
                 del?.timeoutIfNeeded()
             }
         }
@@ -111,8 +114,10 @@ class ClaudeAPIClient {
             if let text = String(data: data, encoding: .utf8), text.contains("Just a moment") {
                 throw APIError.cloudflareChallenge
             }
+            #if DEBUG
             print("[EmberBar] Decode error for orgs: \(error)")
             print("[EmberBar] Response: \(String(data: data.prefix(500), encoding: .utf8) ?? "nil")")
+            #endif
             throw APIError.decodingError(error)
         }
     }
@@ -126,14 +131,27 @@ class ClaudeAPIClient {
 
         let data = try await fetchJSON(url: url, cookie: cookie)
 
+        // Empty response = session likely expired
+        guard !data.isEmpty else {
+            throw APIError.invalidCookie
+        }
+
         do {
-            return try JSONDecoder().decode(UsageResponse.self, from: data)
+            let decoder = JSONDecoder()
+            return try decoder.decode(UsageResponse.self, from: data)
         } catch {
-            if let text = String(data: data, encoding: .utf8), text.contains("Just a moment") {
-                throw APIError.cloudflareChallenge
+            if let text = String(data: data, encoding: .utf8) {
+                if text.contains("Just a moment") {
+                    throw APIError.cloudflareChallenge
+                }
+                if text.hasPrefix("<") || text.hasPrefix("<!") {
+                    throw APIError.invalidCookie
+                }
             }
+            #if DEBUG
             print("[EmberBar] Decode error for usage: \(error)")
-            print("[EmberBar] Response: \(String(data: data.prefix(500), encoding: .utf8) ?? "nil")")
+            print("[EmberBar] Response (\(data.count) bytes): \(String(data: data.prefix(1000), encoding: .utf8) ?? "nil")")
+            #endif
             throw APIError.decodingError(error)
         }
     }

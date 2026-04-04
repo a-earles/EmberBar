@@ -1,10 +1,24 @@
 import Foundation
+import ServiceManagement
 
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
     @Published var launchAtLogin: Bool {
-        didSet { UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin") }
+        didSet {
+            UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin")
+            do {
+                if launchAtLogin {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                #if DEBUG
+                print("[EmberBar] Launch at login: \(error.localizedDescription)")
+                #endif
+            }
+        }
     }
 
     @Published var refreshIntervalSeconds: Double {
@@ -35,9 +49,14 @@ class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(cachedOrgId, forKey: "cachedOrgId") }
     }
 
+    @Published var hasPromptedAccessibility: Bool {
+        didSet { UserDefaults.standard.set(hasPromptedAccessibility, forKey: "hasPromptedAccessibility") }
+    }
+
     private init() {
         let defaults = UserDefaults.standard
-        self.launchAtLogin = defaults.object(forKey: "launchAtLogin") as? Bool ?? true
+        // Read actual system state so the toggle reflects reality
+        self.launchAtLogin = SMAppService.mainApp.status == .enabled
         self.refreshIntervalSeconds = defaults.object(forKey: "refreshInterval") as? Double ?? 60.0
         self.notifyAt75 = defaults.object(forKey: "notifyAt75") as? Bool ?? true
         self.notifyAt90 = defaults.object(forKey: "notifyAt90") as? Bool ?? true
@@ -45,5 +64,6 @@ class AppSettings: ObservableObject {
         self.notifyPeakHours = defaults.object(forKey: "notifyPeakHours") as? Bool ?? true
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
         self.cachedOrgId = defaults.string(forKey: "cachedOrgId")
+        self.hasPromptedAccessibility = defaults.bool(forKey: "hasPromptedAccessibility")
     }
 }

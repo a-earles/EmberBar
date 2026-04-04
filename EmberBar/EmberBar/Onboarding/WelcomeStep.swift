@@ -5,8 +5,7 @@ struct WelcomeStep: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("\u{1F525}")
-                .font(.system(size: 64))
+            EmberLogo(size: 64)
 
             Text("Welcome to EmberBar")
                 .font(.system(size: 24, weight: .bold))

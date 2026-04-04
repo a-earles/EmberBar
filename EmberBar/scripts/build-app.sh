@@ -9,8 +9,8 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_DIR/.build"
 APP_NAME="EmberBar"
 BUNDLE_ID="com.emberbar.app"
-VERSION="1.0.0"
-BUILD_NUMBER="1"
+VERSION="1.0.1"
+BUILD_NUMBER="2"
 
 # Output paths
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
@@ -20,13 +20,11 @@ echo "=== EmberBar Build Script ==="
 echo "Version: $VERSION ($BUILD_NUMBER)"
 echo ""
 
-# Step 1: Build the Swift package
-# Use debug mode — release builds have launch issues with ad-hoc signing on macOS.
-# Switch to release once we have a proper Developer ID certificate.
-echo "[1/5] Building..."
+# Step 1: Build the Swift package (release mode for distribution)
+echo "[1/5] Building (release)..."
 cd "$PROJECT_DIR"
-swift build 2>&1 | tail -3
-BINARY="$BUILD_DIR/debug/$APP_NAME"
+swift build -c release 2>&1 | tail -3
+BINARY="$BUILD_DIR/release/$APP_NAME"
 
 if [ ! -f "$BINARY" ]; then
     echo "ERROR: Binary not found at $BINARY"
@@ -80,43 +78,68 @@ echo "  Icon: $APP_BUNDLE/Contents/Resources/AppIcon.icns"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AppIcon" "$APP_BUNDLE/Contents/Info.plist"
 
 # Step 4: Ad-hoc code sign
-echo "[4/5] Code signing (ad-hoc)..."
-codesign --force --deep --sign - \
+# Use the project entitlements but strip any Xcode-only variables first
+# Code signing identity
+SIGN_IDENTITY="Developer ID Application: Adam Earles (5SMUM7H28D)"
+NOTARY_PROFILE="EmberBar"
+
+echo "[4/6] Code signing with Developer ID..."
+codesign --force --deep --sign "$SIGN_IDENTITY" \
+    --options runtime \
     --entitlements "$PROJECT_DIR/$APP_NAME/$APP_NAME.entitlements" \
     "$APP_BUNDLE" 2>&1
-echo "  Signed: $(codesign -dv "$APP_BUNDLE" 2>&1 | grep 'Identifier' || echo 'ad-hoc')"
+echo "  Signed: $(codesign -dv "$APP_BUNDLE" 2>&1 | grep 'TeamIdentifier' || echo 'unknown')"
 
 # Verify
 codesign --verify --verbose "$APP_BUNDLE" 2>&1 && echo "  Verification: OK" || echo "  Verification: WARNING"
 
 # Step 5: Create DMG (if --dmg flag passed)
 if [ "${1:-}" = "--dmg" ]; then
-    echo "[5/5] Creating DMG..."
+    echo "[5/5] Creating styled DMG..."
     rm -f "$DMG_PATH"
 
-    # Create a temporary directory for DMG contents
-    DMG_TMP="$BUILD_DIR/dmg-tmp"
-    rm -rf "$DMG_TMP"
-    mkdir -p "$DMG_TMP"
-
-    # Copy app bundle
-    cp -R "$APP_BUNDLE" "$DMG_TMP/"
-
-    # Create a symlink to /Applications
-    ln -s /Applications "$DMG_TMP/Applications"
-
-    # Create the DMG
-    hdiutil create -volname "$APP_NAME" \
-        -srcfolder "$DMG_TMP" \
-        -ov -format UDZO \
-        "$DMG_PATH" 2>&1 | tail -2
-
-    rm -rf "$DMG_TMP"
+    if command -v create-dmg &>/dev/null; then
+        # Use create-dmg for a polished installer with icon layout
+        create-dmg \
+            --volname "$APP_NAME" \
+            --window-pos 200 120 \
+            --window-size 540 380 \
+            --icon-size 96 \
+            --icon "$APP_NAME.app" 140 170 \
+            --app-drop-link 400 170 \
+            --no-internet-enable \
+            "$DMG_PATH" \
+            "$APP_BUNDLE" 2>&1 | tail -3
+    else
+        # Fallback: simple DMG with Applications symlink
+        DMG_TMP="$BUILD_DIR/dmg-tmp"
+        rm -rf "$DMG_TMP"
+        mkdir -p "$DMG_TMP"
+        cp -R "$APP_BUNDLE" "$DMG_TMP/"
+        ln -s /Applications "$DMG_TMP/Applications"
+        hdiutil create -volname "$APP_NAME" \
+            -srcfolder "$DMG_TMP" \
+            -ov -format UDZO \
+            "$DMG_PATH" 2>&1 | tail -2
+        rm -rf "$DMG_TMP"
+    fi
 
     DMG_SIZE=$(du -h "$DMG_PATH" | cut -f1)
     echo "  DMG: $DMG_PATH ($DMG_SIZE)"
+
+    # Step 6: Notarise the DMG
+    echo "[6/6] Notarising with Apple..."
+    xcrun notarytool submit "$DMG_PATH" \
+        --keychain-profile "$NOTARY_PROFILE" \
+        --wait 2>&1
+
+    echo "  Stapling notarisation ticket..."
+    xcrun stapler staple "$DMG_PATH" 2>&1
+
+    echo "  Notarisation complete"
 else
-    echo "[5/5] Skipping DMG (pass --dmg to create)"
+    echo "[5/6] Skipping DMG (pass --dmg to create)"
+    echo "[6/6] Skipping notarisation (no DMG)"
 fi
 
 APP_SIZE=$(du -sh "$APP_BUNDLE" | cut -f1)

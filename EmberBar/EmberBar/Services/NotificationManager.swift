@@ -16,14 +16,18 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             UNUserNotificationCenter.current().delegate = self
             isAvailable = true
         } else {
+            #if DEBUG
             print("[EmberBar] Notifications unavailable — no bundle identifier (dev build)")
+            #endif
         }
     }
 
     func requestPermission() {
         guard isAvailable else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            #if DEBUG
             print("[EmberBar] Notification permission: granted=\(granted) error=\(String(describing: error))")
+            #endif
         }
     }
 
@@ -92,7 +96,9 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func send(id: String, title: String, body: String) {
         guard isAvailable else {
+            #if DEBUG
             print("[EmberBar] [Notification] \(title): \(body)")
+            #endif
             return
         }
         let content = UNMutableNotificationContent()

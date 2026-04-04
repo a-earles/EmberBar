@@ -17,8 +17,8 @@ struct UsageResponse: Codable {
 }
 
 struct UsageWindow: Codable {
-    let utilization: Double
-    let resetsAt: String
+    let utilization: Double?
+    let resetsAt: String?
 
     enum CodingKeys: String, CodingKey {
         case utilization
@@ -26,6 +26,7 @@ struct UsageWindow: Codable {
     }
 
     var resetDate: Date? {
+        guard let resetsAt = resetsAt else { return nil }
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = formatter.date(from: resetsAt) { return date }
@@ -40,7 +41,7 @@ struct UsageWindow: Codable {
     }
 
     var utilizationFraction: Double {
-        utilization / 100.0
+        (utilization ?? 0) / 100.0
     }
 }
 
@@ -70,6 +71,27 @@ struct Organization: Codable {
     let id: Int?
     let uuid: String
     let name: String?
+    let chatGptRole: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, uuid, name
+        case chatGptRole = "chat_gpt_role"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(Int.self, forKey: .id)
+        // uuid can come as either "uuid" or fall back to "id" as string
+        if let u = try container.decodeIfPresent(String.self, forKey: .uuid) {
+            uuid = u
+        } else if let intId = id {
+            uuid = String(intId)
+        } else {
+            uuid = ""
+        }
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        chatGptRole = try container.decodeIfPresent(String.self, forKey: .chatGptRole)
+    }
 }
 
 struct UsageSnapshot {

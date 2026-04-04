@@ -6,6 +6,12 @@ enum PopoverPage {
     case settings
 }
 
+// Notifications for popover → AppDelegate communication.
+extension Notification.Name {
+    static let showOnboarding = Notification.Name("EmberBar.showOnboarding")
+    static let popoverNavigate = Notification.Name("EmberBar.popoverNavigate")
+}
+
 // MARK: - Vibrancy Background
 
 struct VisualEffectBackground: NSViewRepresentable {
@@ -48,6 +54,11 @@ struct PopoverView: View {
         }
         .frame(width: 320)
         .animation(.easeInOut(duration: 0.2), value: currentPage)
+        .onReceive(NotificationCenter.default.publisher(for: .popoverNavigate)) { notification in
+            if let page = notification.object as? PopoverPage {
+                currentPage = page
+            }
+        }
     }
 }
 
@@ -67,37 +78,59 @@ struct DashboardPage: View {
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                 }
                 Spacer()
-                if !appState.planName.isEmpty {
-                    Text(appState.planName)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.white.opacity(0.06))
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                }
             }
             .padding(.bottom, 2)
 
             if !appState.cookieIsValid {
                 VStack(spacing: 12) {
-                    EmberLogo(size: 48)
+                    EmberLogo(size: 44)
+                        .padding(.top, 12)
+
                     Text("Not Connected")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
-                    Text("Set up your session cookie to start tracking.")
-                        .font(EmberTheme.bodyText)
+
+                    Text("Sign in to Claude to start\ntracking your usage.")
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                    Button("Set Up Cookie") {
-                        if let appDelegate = NSApp.delegate as? AppDelegate {
-                            appDelegate.showOnboarding()
-                        }
+
+                    Button(action: {
+                        NotificationCenter.default.post(name: .showOnboarding, object: OnboardingStep.browserLogin)
+                    }) {
+                        Text("Sign in to Claude")
+                            .font(.system(size: 13, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 32)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(EmberTheme.ember)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 4)
+
+                    Button(action: {
+                        NotificationCenter.default.post(name: .showOnboarding, object: OnboardingStep.pasteValidate)
+                    }) {
+                        Label("Enter cookie manually", systemImage: "doc.on.clipboard")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .frame(maxHeight: .infinity)
+
+                Spacer(minLength: 4)
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.06))
+                    .frame(height: 0.5)
+
+                HStack {
+                    Spacer()
+                    FooterNSButton(title: "Quit", systemImage: "power") {
+                        NSApp.terminate(nil)
+                    }
+                }
+                .padding(.top, 4)
             } else if appState.usageResponse == nil && appState.isLoading {
                 VStack(spacing: 8) {
                     ProgressView()
@@ -151,28 +184,41 @@ struct DashboardPage: View {
                         .fill(Color.white.opacity(0.06))
                         .frame(height: 0.5)
 
-                    HStack(spacing: 0) {
-                        FooterNSButton(title: "Open Claude", systemImage: "globe") {
+                    HStack(spacing: 16) {
+                        footerButton("Open Claude", icon: "globe") {
                             if let url = URL(string: "https://claude.ai") {
                                 NSWorkspace.shared.open(url)
                             }
                         }
-                        Spacer()
-                        FooterNSButton(title: "Settings", systemImage: "gear") {
-                            currentPage = .settings
+                        footerButton("Settings", icon: "gear") {
+                            NotificationCenter.default.post(name: .popoverNavigate, object: PopoverPage.settings)
                         }
-                        FooterNSButton(title: "Refresh", systemImage: "arrow.clockwise") {
+                        footerButton("Refresh", icon: "arrow.clockwise") {
                             Task { await appState.fetchUsage() }
                         }
-                        FooterNSButton(title: "Quit", systemImage: "power") {
+                        footerButton("Quit", icon: "power") {
                             NSApp.terminate(nil)
                         }
                     }
+                    .frame(maxWidth: .infinity)
                 }
                 .padding(.top, 2)
             }
         }
         .padding(16)
+    }
+
+    private func footerButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .medium))
+                Text(title)
+                    .font(.system(size: 10))
+            }
+            .foregroundColor(.secondary)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -184,10 +230,10 @@ struct SettingsPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
+            // Header — fixed, not scrollable
             HStack {
                 FooterNSButton(title: "Back", systemImage: "chevron.left") {
-                    currentPage = .dashboard
+                    NotificationCenter.default.post(name: .popoverNavigate, object: PopoverPage.dashboard)
                 }
                 Spacer()
                 Text("Settings")
@@ -196,125 +242,121 @@ struct SettingsPage: View {
                 Color.clear.frame(width: 50, height: 1)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 10)
+            .padding(.top, 14)
+            .padding(.bottom, 8)
 
             Rectangle()
                 .fill(Color.white.opacity(0.06))
                 .frame(height: 0.5)
 
-            // Content — no ScrollView, everything fits
-            VStack(alignment: .leading, spacing: 12) {
-                // GENERAL
-                sectionHeader("General")
-                settingsCard {
-                    settingsRow {
-                        NativeToggleRow(label: "Launch at login", isOn: $appState.settings.launchAtLogin)
-                    }
-                    settingsDivider()
-                    settingsRow {
-                        HStack {
-                            Text("Refresh")
-                                .font(EmberTheme.bodyText)
-                            Spacer()
-                            Picker("", selection: $appState.settings.refreshIntervalSeconds) {
-                                Text("30s").tag(30.0)
-                                Text("1m").tag(60.0)
-                                Text("2m").tag(120.0)
-                                Text("5m").tag(300.0)
+            VStack(alignment: .leading, spacing: 10) {
+                    // GENERAL
+                    sectionHeader("General")
+                    settingsCard {
+                        settingsRow {
+                            NativeToggleRow(label: "Launch at login", isOn: $appState.settings.launchAtLogin)
+                        }
+                        settingsDivider()
+                        settingsRow {
+                            HStack {
+                                Text("Refresh")
+                                    .font(EmberTheme.bodyText)
+                                Spacer()
+                                Picker("", selection: $appState.settings.refreshIntervalSeconds) {
+                                    Text("30s").tag(30.0)
+                                    Text("1m").tag(60.0)
+                                    Text("2m").tag(120.0)
+                                    Text("5m").tag(300.0)
+                                }
+                                .pickerStyle(.segmented)
+                                .frame(width: 155)
                             }
-                            .pickerStyle(.segmented)
-                            .frame(width: 155)
                         }
-                    }
-                    settingsDivider()
-                    settingsRow {
-                        HStack {
-                            Text("Shortcut")
-                                .font(EmberTheme.bodyText)
-                            Spacer()
-                            Text("\u{2318}\u{21E7}E")
-                                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.white.opacity(0.08))
-                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                        }
-                    }
-                }
-
-                // NOTIFICATIONS
-                sectionHeader("Notifications")
-                settingsCard {
-                    settingsRow {
-                        NativeToggleRow(label: "At 75% usage", isOn: $appState.settings.notifyAt75)
-                    }
-                    settingsDivider()
-                    settingsRow {
-                        NativeToggleRow(label: "At 90% usage", isOn: $appState.settings.notifyAt90)
-                    }
-                    settingsDivider()
-                    settingsRow {
-                        NativeToggleRow(label: "Burn rate warning", isOn: $appState.settings.notifyBurnRate)
-                    }
-                    settingsDivider()
-                    settingsRow {
-                        NativeToggleRow(label: "Peak hours alert", isOn: $appState.settings.notifyPeakHours)
-                    }
-                }
-
-                // ACCOUNT
-                sectionHeader("Account")
-                settingsCard {
-                    settingsRow {
-                        HStack {
-                            Text("Status")
-                                .font(EmberTheme.bodyText)
-                            Spacer()
-                            HStack(spacing: 5) {
-                                Circle()
-                                    .fill(appState.cookieIsValid ? EmberTheme.safe : EmberTheme.danger)
-                                    .frame(width: 7, height: 7)
-                                Text(appState.cookieIsValid ? "Connected" : "Disconnected")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(appState.cookieIsValid ? EmberTheme.safe : EmberTheme.danger)
+                        settingsDivider()
+                        settingsRow {
+                            HStack {
+                                Text("Shortcut")
+                                    .font(EmberTheme.bodyText)
+                                Spacer()
+                                Text("\u{2303}\u{21E7}E")
+                                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color.white.opacity(0.08))
+                                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                             }
                         }
                     }
-                    settingsDivider()
-                    settingsRow {
-                        FooterNSButton(title: "Update Cookie...", systemImage: "key") {
-                            if let appDelegate = NSApp.delegate as? AppDelegate {
-                                appDelegate.showOnboarding()
+
+                    // NOTIFICATIONS
+                    sectionHeader("Notifications")
+                    settingsCard {
+                        settingsRow {
+                            NativeToggleRow(label: "At 75% usage", isOn: $appState.settings.notifyAt75)
+                        }
+                        settingsDivider()
+                        settingsRow {
+                            NativeToggleRow(label: "At 90% usage", isOn: $appState.settings.notifyAt90)
+                        }
+                        settingsDivider()
+                        settingsRow {
+                            NativeToggleRow(label: "Burn rate warning", isOn: $appState.settings.notifyBurnRate)
+                        }
+                        settingsDivider()
+                        settingsRow {
+                            NativeToggleRow(label: "Peak hours alert", isOn: $appState.settings.notifyPeakHours)
+                        }
+                    }
+
+                    // ACCOUNT
+                    sectionHeader("Account")
+                    settingsCard {
+                        settingsRow {
+                            HStack {
+                                Text("Status")
+                                    .font(EmberTheme.bodyText)
+                                Spacer()
+                                HStack(spacing: 5) {
+                                    Circle()
+                                        .fill(appState.cookieIsValid ? EmberTheme.safe : EmberTheme.danger)
+                                        .frame(width: 7, height: 7)
+                                    Text(appState.cookieIsValid ? "Connected" : "Disconnected")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(appState.cookieIsValid ? EmberTheme.safe : EmberTheme.danger)
+                                }
+                            }
+                        }
+                        settingsDivider()
+                        settingsRow {
+                            FooterNSButton(title: "Update Cookie...", systemImage: "key") {
+                                NotificationCenter.default.post(name: .showOnboarding, object: OnboardingStep.browserLogin)
+                            }
+                        }
+                        settingsDivider()
+                        settingsRow {
+                            FooterNSButton(title: "Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                                appState.signOut()
+                                NotificationCenter.default.post(name: .popoverNavigate, object: PopoverPage.dashboard)
                             }
                         }
                     }
-                    settingsDivider()
-                    settingsRow {
-                        FooterNSButton(title: "Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
-                            appState.signOut()
-                            currentPage = .dashboard
-                        }
+
+                    // About
+                    VStack(spacing: 3) {
+                        Text("EmberBar v1.0.0")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary.opacity(0.35))
+                        Text("No analytics \u{00B7} No telemetry \u{00B7} Privacy-first")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary.opacity(0.25))
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
                 }
-
-                Spacer()
-
-                // About
-                VStack(spacing: 3) {
-                    Text("EmberBar v1.0.0")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary.opacity(0.35))
-                    Text("No analytics \u{00B7} No telemetry \u{00B7} Privacy-first")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary.opacity(0.25))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 4)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
         }
     }
 
@@ -326,7 +368,7 @@ struct SettingsPage: View {
             .foregroundColor(.secondary.opacity(0.5))
             .tracking(0.8)
             .padding(.leading, 4)
-            .padding(.bottom, 4)
+            .padding(.bottom, 2)
     }
 
     private func settingsCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -344,7 +386,7 @@ struct SettingsPage: View {
     private func settingsRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 7)
     }
 
     private func settingsDivider() -> some View {
@@ -424,21 +466,74 @@ struct FooterNSButton: NSViewRepresentable {
     let systemImage: String
     let action: () -> Void
 
-    func makeNSView(context: Context) -> NSButton {
+    func makeNSView(context: Context) -> NSView {
         let button = NSButton(frame: .zero)
         button.bezelStyle = .recessed
         button.isBordered = false
         button.target = context.coordinator
         button.action = #selector(Coordinator.clicked)
-        button.font = NSFont.systemFont(ofSize: 10)
-        button.contentTintColor = .secondaryLabelColor
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        // Use attributed string with inline image for precise icon-text alignment
+        let font = NSFont.systemFont(ofSize: 10)
+        let color = NSColor.secondaryLabelColor
+
+        let combined = NSMutableAttributedString()
 
         if let image = NSImage(systemSymbolName: systemImage, accessibilityDescription: title) {
-            let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)
-            button.image = image.withSymbolConfiguration(config)
-            button.imagePosition = .imageLeading
+            let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .medium)
+            if let configured = image.withSymbolConfiguration(config) {
+                configured.isTemplate = true
+                let attachment = NSTextAttachment()
+                attachment.image = configured
+                // Vertically center the icon with the text
+                let iconHeight = configured.size.height
+                attachment.bounds = CGRect(x: 0, y: (font.capHeight - iconHeight) / 2, width: configured.size.width, height: iconHeight)
+                let iconStr = NSAttributedString(attachment: attachment)
+                combined.append(iconStr)
+                combined.append(NSAttributedString(string: " "))
+            }
         }
-        button.title = title
+
+        combined.append(NSAttributedString(string: title, attributes: [
+            .font: font,
+            .foregroundColor: color,
+        ]))
+
+        button.attributedTitle = combined
+        button.contentTintColor = color
+        button.image = nil
+        button.imagePosition = .noImage
+
+        return button
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.action = action
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(action: action)
+    }
+
+    class Coordinator: NSObject {
+        var action: () -> Void
+        init(action: @escaping () -> Void) { self.action = action }
+        @objc func clicked() { action() }
+    }
+}
+
+// MARK: - Back Button (NSButton-backed, visible in dark popover)
+
+struct BackNSButton: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> NSButton {
+        let button = NSButton(title: "← Back", target: context.coordinator, action: #selector(Coordinator.clicked))
+        button.bezelStyle = .roundRect
+        button.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        button.contentTintColor = .secondaryLabelColor
+        button.isBordered = true
         return button
     }
 
