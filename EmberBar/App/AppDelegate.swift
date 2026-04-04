@@ -75,8 +75,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Global shortcut: Ctrl+Shift+E — requires Accessibility permission
         NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            if flags.contains(.control) && flags.contains(.shift) && event.keyCode == 14 {
+            if event.keyCode == 14 && event.modifierFlags.contains(.shift) &&
+               (event.modifierFlags.contains(.control) || event.modifierFlags.contains(.command)) {
                 DispatchQueue.main.async {
                     self?.togglePopover()
                 }
@@ -84,8 +84,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Local monitor: fires when popover has focus
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            if flags.contains(.control) && flags.contains(.shift) && event.keyCode == 14 {
+            if event.keyCode == 14 && event.modifierFlags.contains(.shift) &&
+               (event.modifierFlags.contains(.control) || event.modifierFlags.contains(.command)) {
                 DispatchQueue.main.async {
                     self?.togglePopover()
                 }

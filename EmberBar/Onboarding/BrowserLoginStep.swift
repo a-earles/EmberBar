@@ -105,10 +105,19 @@ private struct ClaudeWebView: NSViewRepresentable {
         cookieStore.add(context.coordinator)
         context.coordinator.cookieStore = cookieStore
 
-        context.coordinator.startPolling()
-
-        if let url = URL(string: "https://claude.ai/login") {
-            wv.load(URLRequest(url: url))
+        // Clear existing claude.ai cookies so the user sees the login page
+        // (prevents auto-login from a previous session)
+        cookieStore.getAllCookies { cookies in
+            for cookie in cookies where cookie.domain.contains("claude.ai") {
+                cookieStore.delete(cookie)
+            }
+            // Start polling and load login page after cookies are cleared
+            DispatchQueue.main.async {
+                context.coordinator.startPolling()
+                if let url = URL(string: "https://claude.ai/login") {
+                    wv.load(URLRequest(url: url))
+                }
+            }
         }
         return wv
     }
