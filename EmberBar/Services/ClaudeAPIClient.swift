@@ -137,20 +137,20 @@ class ClaudeAPIClient {
         }
 
         do {
-            return try JSONDecoder().decode(UsageResponse.self, from: data)
+            let decoder = JSONDecoder()
+            return try decoder.decode(UsageResponse.self, from: data)
         } catch {
             if let text = String(data: data, encoding: .utf8) {
                 if text.contains("Just a moment") {
                     throw APIError.cloudflareChallenge
                 }
-                // If we got HTML or non-JSON, the cookie is likely expired
                 if text.hasPrefix("<") || text.hasPrefix("<!") {
                     throw APIError.invalidCookie
                 }
             }
             #if DEBUG
             print("[EmberBar] Decode error for usage: \(error)")
-            print("[EmberBar] Response (\(data.count) bytes): \(String(data: data.prefix(500), encoding: .utf8) ?? "nil")")
+            print("[EmberBar] Response (\(data.count) bytes): \(String(data: data.prefix(1000), encoding: .utf8) ?? "nil")")
             #endif
             throw APIError.decodingError(error)
         }

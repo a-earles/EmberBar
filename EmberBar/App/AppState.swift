@@ -100,9 +100,9 @@ class AppState: ObservableObject {
             lastUpdated = Date()
             cookieIsValid = true
 
-            if let session = response.fiveHour {
-                burnRateCalculator.addSample(utilization: session.utilization)
-                burnRate = burnRateCalculator.currentBurnRate(currentUtilization: session.utilization)
+            if let session = response.fiveHour, let util = session.utilization {
+                burnRateCalculator.addSample(utilization: util)
+                burnRate = burnRateCalculator.currentBurnRate(currentUtilization: util)
             }
 
             isPeakHour = PeakHourDetector.isPeakHour()

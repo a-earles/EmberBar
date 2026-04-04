@@ -9,8 +9,8 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_DIR/.build"
 APP_NAME="EmberBar"
 BUNDLE_ID="com.emberbar.app"
-VERSION="1.0.0"
-BUILD_NUMBER="1"
+VERSION="1.0.1"
+BUILD_NUMBER="2"
 
 # Output paths
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"

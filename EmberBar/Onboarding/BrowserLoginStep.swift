@@ -16,14 +16,27 @@ struct BrowserLoginStep: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 5) {
+            VStack(spacing: 8) {
                 Text("Sign in to Claude")
                     .font(.system(size: 18, weight: .bold))
-                Text("Enter your email address below to sign in.\nGoogle sign-in is not supported in this window.")
+                Text("Enter your email address below to sign in.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.system(size: 11))
+                    Text("Google sign-in is not supported in this window. Please use email.")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundColor(.orange)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.orange.opacity(0.12))
+                )
             }
             .padding(.top, 10)
             .padding(.bottom, 10)
