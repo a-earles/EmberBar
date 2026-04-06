@@ -28,7 +28,7 @@ struct KeychainManager {
         UserDefaults.standard.removeObject(forKey: defaultsKey)
     }
     #else
-    // Production: use Keychain with ThisDeviceOnly
+    // Production: use Keychain with AfterFirstUnlock (survives restart without re-login)
     static func saveCookie(_ cookie: String) throws {
         try saveToKeychain(cookie)
     }
@@ -69,7 +69,7 @@ struct KeychainManager {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
