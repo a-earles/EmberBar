@@ -30,11 +30,7 @@ A native macOS menu bar app for Claude Max users. Tracks your 5-hour session usa
 
 Download the latest `.dmg` from [Releases](https://github.com/a-earles/EmberBar/releases), open it, and drag **EmberBar.app** to your Applications folder.
 
-> On first launch, macOS will block the app (it's not notarised yet). Open Terminal and run:
-> ```
-> xattr -cr /Applications/EmberBar.app
-> ```
-> Then open EmberBar from Applications normally. You only need to do this once.
+The app is signed with a Developer ID certificate and notarised by Apple, so it should open without any Gatekeeper warnings.
 
 ### Build from source
 
